@@ -40,7 +40,7 @@ export class RetrievalService {
     const queryEmbedding =
       await this.embeddingsService.generateEmbedding(question);
 
-    // 2. Perform similarity search in ChromaDB (limit 5 chunks)
+    // 2. Perform similarity search in vector store (limit 5 chunks)
     const searchResults = await this.vectorStoreService.similaritySearch(
       queryEmbedding,
       5,

@@ -49,8 +49,8 @@ describe('RetrievalService', () => {
       const mockEmbedding = [0.1, 0.2, 0.3];
       mockEmbeddingsService.generateEmbedding.mockResolvedValue(mockEmbedding);
 
-      // Distances from ChromaDB search results.
-      // Similarity = 1 - distance
+      // Distances from vector store search results.
+      // Similarity = 1 - distance / 2
       // We want some above 0.75 (distance <= 0.25) and some below (distance > 0.25).
       const mockSearchResults = [
         {

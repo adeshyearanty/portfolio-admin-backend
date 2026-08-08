@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
-import { VectorStoreService } from './vector-store.service';
+import { MongoVectorStoreService } from './mongo-vector-store.service';
 import { IVectorStoreService } from '../interfaces/vector-store.interface';
 
 @Module({
   providers: [
+    MongoVectorStoreService,
     {
       provide: IVectorStoreService,
-      useClass: VectorStoreService,
+      useExisting: MongoVectorStoreService,
     },
   ],
-  exports: [IVectorStoreService],
+  exports: [IVectorStoreService, MongoVectorStoreService],
 })
 export class VectorStoreModule {}

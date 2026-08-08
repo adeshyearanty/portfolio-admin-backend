@@ -5,10 +5,7 @@ import { BaseParser } from './base-parser';
 @Injectable()
 export class PdfParser extends BaseParser {
   supports(mimeType: string, extension: string): boolean {
-    return (
-      mimeType === 'application/pdf' ||
-      extension.toLowerCase() === '.pdf'
-    );
+    return mimeType === 'application/pdf' || extension.toLowerCase() === '.pdf';
   }
 
   async parse(buffer: Buffer): Promise<string> {

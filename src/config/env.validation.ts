@@ -35,10 +35,6 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  DATABASE_URL = '';
-
-  @IsString()
-  @IsOptional()
   CLIENT_URL = 'http://localhost:4000';
 
   @IsString()
@@ -48,18 +44,6 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CHAT_MODEL = 'gemini-2.5-flash';
-
-  @IsString()
-  @IsOptional()
-  CHROMA_COLLECTION = 'portfolio-assistant';
-
-  @IsString()
-  @IsOptional()
-  CHROMA_HOST = 'localhost';
-
-  @IsString()
-  @IsOptional()
-  CHROMA_PORT = '8000';
 
   @IsString()
   @IsOptional()
@@ -80,6 +64,18 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   SIMILARITY_THRESHOLD = '0.35';
+
+  @IsString()
+  @IsOptional()
+  MONGODB_URI = '';
+
+  @IsString()
+  @IsOptional()
+  MONGODB_DATABASE = 'portfolio_admin';
+
+  @IsString()
+  @IsOptional()
+  MONGODB_VECTOR_INDEX = 'vector_index';
 }
 
 export function validate(config: Record<string, unknown>) {
@@ -94,7 +90,7 @@ export function validate(config: Record<string, unknown>) {
     throw new Error(`Environment validation failed: ${errors.toString()}`);
   }
 
-  // Populate validated values back into process.env for third-party libraries (e.g. Prisma)
+  // Populate validated values back into process.env
   for (const [key, value] of Object.entries(validatedConfig)) {
     if (value !== undefined) {
       process.env[key] = String(value);

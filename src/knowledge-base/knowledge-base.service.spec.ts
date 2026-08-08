@@ -211,7 +211,7 @@ describe('KnowledgeBaseService', () => {
       mockDocumentRepository.findUnique.mockResolvedValue(mockDoc);
       mockStorageService.deleteFile.mockResolvedValue(undefined);
       mockVectorStoreService.deleteDocument.mockRejectedValue(
-        new Error('Chroma DB connection refused'),
+        new Error('Vector store connection refused'),
       );
       mockDocumentRepository.delete.mockResolvedValue(mockDoc);
 

@@ -6,8 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { IStorageService } from '../interfaces/storage-service.interface';
-import { Prisma } from '@prisma/client';
-import { IDocumentRepository } from './repositories/document.repository.interface';
+import {
+  IDocumentRepository,
+  KnowledgeDocumentWhereInput,
+} from './repositories/document.repository.interface';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { GetDocumentsQueryDto } from './dto/get-documents-query.dto';
 import { randomUUID } from 'crypto';
@@ -121,9 +123,9 @@ export class KnowledgeBaseService {
         );
       }
 
-      // 5. Generate Embeddings & Store in ChromaDB
+      // 5. Generate Embeddings & Store in Vector Store
       this.logger.log(
-        `[STAGE 5/5 - EMBEDDING & STORAGE] Generating embeddings and storing in ChromaDB`,
+        `[STAGE 5/5 - EMBEDDING & STORAGE] Generating embeddings and storing in Vector Store`,
       );
       const chunkTexts = chunks.map((c) => c.chunkText);
       const vectors =
@@ -144,7 +146,7 @@ export class KnowledgeBaseService {
         chunkTexts,
       );
       this.logger.log(
-        `[STAGE 5/5 - EMBEDDING & STORAGE] Stored ${ids.length} vector embeddings in ChromaDB`,
+        `[STAGE 5/5 - EMBEDDING & STORAGE] Stored ${ids.length} vector embeddings in Vector Store`,
       );
 
       // Update DB record to COMPLETED
@@ -177,16 +179,16 @@ export class KnowledgeBaseService {
         );
       }
 
-      // B. Delete ChromaDB vectors
+      // B. Delete vector store chunks
       if (documentId) {
         try {
           await this.vectorStoreService.deleteDocument(documentId);
           this.logger.log(
-            `[ROLLBACK] ChromaDB vectors for document ${documentId} deleted`,
+            `[ROLLBACK] Vector embeddings for document ${documentId} deleted`,
           );
         } catch (err) {
           this.logger.error(
-            `[ROLLBACK FAILURE] Failed to delete ChromaDB vectors for document ${documentId}`,
+            `[ROLLBACK FAILURE] Failed to delete vector embeddings for document ${documentId}`,
             err instanceof Error ? err.stack : undefined,
           );
         }
@@ -227,7 +229,7 @@ export class KnowledgeBaseService {
 
     const skip = (page - 1) * limit;
 
-    const where: Prisma.KnowledgeDocumentWhereInput = {};
+    const where: KnowledgeDocumentWhereInput = {};
     if (search) {
       where.OR = [
         { title: { contains: search } },
@@ -301,16 +303,16 @@ export class KnowledgeBaseService {
       );
     }
 
-    // Delete vectors from ChromaDB
+    // Delete vectors from vector store
     try {
       await this.vectorStoreService.deleteDocument(id);
       this.logger.log(
-        `Deleted vector embeddings from ChromaDB for document: ${id}`,
+        `Deleted vector embeddings from vector store for document: ${id}`,
       );
       vectorsDeleted = true;
     } catch (err) {
       this.logger.error(
-        `Failed to delete vector embeddings from ChromaDB during document cleanup: ${id}`,
+        `Failed to delete vector embeddings from vector store during document cleanup: ${id}`,
         err instanceof Error ? err.stack : undefined,
       );
     }
@@ -432,18 +434,18 @@ export class KnowledgeBaseService {
         `[STAGE 5/5 - REPLACE] Deleting old vectors and inserting new vectors`,
       );
 
-      // A. Delete old vector embeddings from ChromaDB
+      // A. Delete old vector embeddings from vector store
       try {
         await this.vectorStoreService.deleteDocument(id);
       } catch (err) {
         this.logger.warn(
-          `Failed to delete old ChromaDB vectors for document: ${id} during replace (continuing): ${
+          `Failed to delete old vector store embeddings for document: ${id} during replace (continuing): ${
             err instanceof Error ? err.message : String(err)
           }`,
         );
       }
 
-      // B. Insert new vectors into ChromaDB
+      // B. Insert new vectors into vector store
       const ids = chunks.map((_, index) => `${id}-chunk-${index}`);
       const metadatas = chunks.map((c, index) => ({
         documentId: id,

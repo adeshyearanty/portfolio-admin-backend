@@ -12,7 +12,6 @@ import {
   HttpStatus,
   ParseUUIDPipe,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -21,23 +20,16 @@ import {
   ApiResponse,
   ApiConsumes,
   ApiBody,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { KnowledgeBaseService } from './knowledge-base.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { GetDocumentsQueryDto } from './dto/get-documents-query.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
 
 @ApiTags('knowledge')
-// @ApiBearerAuth()
-// @UseGuards(JwtAuthGuard, RolesGuard)
-// @Roles('admin')
 @Controller('knowledge')
 export class KnowledgeBaseController {
-  constructor(private readonly knowledgeBaseService: KnowledgeBaseService) { }
+  constructor(private readonly knowledgeBaseService: KnowledgeBaseService) {}
 
   @Post('upload')
   @HttpCode(HttpStatus.CREATED)

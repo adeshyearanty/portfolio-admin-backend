@@ -7,13 +7,13 @@ export default registerAs('app', () => ({
   apiPrefix: process.env.API_PREFIX || 'api',
   storageDir:
     process.env.STORAGE_DIR || join(process.cwd(), 'storage/documents'),
-  databaseUrl: process.env.DATABASE_URL || 'file:./dev.db',
   googleApiKey: process.env.GOOGLE_API_KEY || '',
-  chromaHost: process.env.CHROMA_HOST || 'localhost',
-  chromaPort: process.env.CHROMA_PORT || '8000',
   jwtSecret: process.env.JWT_SECRET || 'super-secret-key-1234',
   whatsappVerifyToken: process.env.VERIFY_TOKEN || 'my-verify-token-1234',
   whatsappAccessToken: process.env.ACCESS_TOKEN || '',
   whatsappPhoneNumberId: process.env.PHONE_NUMBER_ID || '',
   similarityThreshold: parseFloat(process.env.SIMILARITY_THRESHOLD || '0.35'),
+  mongodbUri: process.env.MONGODB_URI || '',
+  mongodbDatabase: process.env.MONGODB_DATABASE || 'portfolio_admin',
+  mongodbVectorIndex: process.env.MONGODB_VECTOR_INDEX || 'vector_index',
 }));

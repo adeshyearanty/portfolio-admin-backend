@@ -40,7 +40,8 @@ export class EmbeddingsService implements IEmbeddingsService {
         throw error;
       }
       this.logger.warn(
-        `Gemini API call failed: ${error instanceof Error ? error.message : String(error)
+        `Gemini API call failed: ${
+          error instanceof Error ? error.message : String(error)
         }. Retrying in ${delay}ms... (Retries left: ${retries})`,
       );
       await new Promise((resolve) => setTimeout(resolve, delay));

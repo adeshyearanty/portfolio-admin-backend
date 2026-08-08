@@ -14,7 +14,7 @@ import { DocumentParserFactory } from './parsers/document-parser.factory';
 import { ChunkService } from './chunk.service';
 import { RetrievalService } from './retrieval.service';
 import { IDocumentRepository } from './repositories/document.repository.interface';
-import { PrismaDocumentRepository } from './repositories/prisma-document.repository';
+import { MongoDocumentRepository } from './repositories/mongo-document.repository';
 
 @Module({
   imports: [StorageModule, EmbeddingsModule, VectorStoreModule],
@@ -30,7 +30,7 @@ import { PrismaDocumentRepository } from './repositories/prisma-document.reposit
     RetrievalService,
     {
       provide: IDocumentRepository,
-      useClass: PrismaDocumentRepository,
+      useClass: MongoDocumentRepository,
     },
   ],
   exports: [
