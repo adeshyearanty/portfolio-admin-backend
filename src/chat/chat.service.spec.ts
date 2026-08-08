@@ -1,0 +1,179 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { ChatService } from './chat.service';
+import { GeminiService } from '../llm/gemini.service';
+import { RetrievalService } from '../knowledge-base/retrieval.service';
+import { ChatMemoryService } from './chat-memory.service';
+
+describe('ChatService', () => {
+  let service: ChatService;
+  let chatMemoryService: ChatMemoryService;
+
+  const mockRetrievalService = {
+    retrieve: jest.fn(),
+  };
+
+  const mockGeminiService = {
+    generateAnswer: jest.fn(),
+    generateAnswerStream: jest.fn(),
+  };
+
+  let module: TestingModule;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    module = await Test.createTestingModule({
+      providers: [
+        ChatService,
+        ChatMemoryService,
+        {
+          provide: RetrievalService,
+          useValue: mockRetrievalService,
+        },
+        {
+          provide: GeminiService,
+          useValue: mockGeminiService,
+        },
+      ],
+    }).compile();
+
+    service = module.get<ChatService>(ChatService);
+    chatMemoryService = module.get<ChatMemoryService>(ChatMemoryService);
+  });
+
+  afterEach(async () => {
+    if (module) {
+      await module.close();
+    }
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('handleUserMessage', () => {
+    it('should retrieve context, generate answer, and return sources', async () => {
+      const mockMessage = 'Tell me about Adesh';
+      const mockChunks = [
+        {
+          chunk: 'Adesh is a software architect.',
+          score: 0.9,
+          metadata: {
+            documentId: 'doc-1',
+            filename: 'profile.txt',
+            chunkIndex: 0,
+          },
+        },
+      ];
+
+      mockRetrievalService.retrieve.mockResolvedValue(mockChunks);
+      mockGeminiService.generateAnswer.mockResolvedValue(
+        'Adesh is a software architect with expertise in Node.js.',
+      );
+
+      const result = await service.handleUserMessage(mockMessage);
+
+      // Verify retrieval query
+      expect(mockRetrievalService.retrieve).toHaveBeenCalledWith(mockMessage);
+
+      // Verify Gemini parameters
+      expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
+        mockMessage,
+        expect.stringContaining(
+          '[Source 1 - profile.txt]:\nAdesh is a software architect.',
+        ),
+        expect.stringContaining("You are Adesh's AI assistant."),
+      );
+
+      // Assert final response shape
+      expect(result).toEqual({
+        answer: 'Adesh is a software architect with expertise in Node.js.',
+        sources: [
+          {
+            documentId: 'doc-1',
+            filename: 'profile.txt',
+            chunkIndex: 0,
+          },
+        ],
+      });
+    });
+
+    it('should retrieve from and save to conversation memory when sessionId is provided', async () => {
+      const mockMessage = 'Tell me about Adesh';
+      const mockChunks = [
+        {
+          chunk: 'Adesh is a software architect.',
+          score: 0.9,
+          metadata: {
+            documentId: 'doc-1',
+            filename: 'profile.txt',
+            chunkIndex: 0,
+          },
+        },
+      ];
+
+      mockRetrievalService.retrieve.mockResolvedValue(mockChunks);
+      mockGeminiService.generateAnswer.mockResolvedValue(
+        'Adesh is a software architect.',
+      );
+
+      // Seed mock memory history
+      const getHistorySpy = jest
+        .spyOn(chatMemoryService, 'getHistory')
+        .mockReturnValue([
+          { role: 'user', text: 'Hello' },
+          { role: 'assistant', text: 'Hi, how can I help?' },
+        ]);
+      const saveMessageSpy = jest.spyOn(chatMemoryService, 'saveMessage');
+
+      const result = await service.handleUserMessage(
+        mockMessage,
+        'session-123',
+      );
+
+      // Verify history query
+      expect(getHistorySpy).toHaveBeenCalledWith('session-123');
+
+      // Verify Gemini parameters contain history text
+      expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
+        mockMessage,
+        expect.stringContaining(
+          'Conversation History:\nUser: Hello\nAssistant: Hi, how can I help?',
+        ),
+        expect.any(String),
+      );
+
+      // Verify both messages saved to memory
+      expect(saveMessageSpy).toHaveBeenCalledTimes(2);
+      expect(saveMessageSpy).toHaveBeenNthCalledWith(
+        1,
+        'session-123',
+        'user',
+        mockMessage,
+      );
+      expect(saveMessageSpy).toHaveBeenNthCalledWith(
+        2,
+        'session-123',
+        'assistant',
+        'Adesh is a software architect.',
+      );
+
+      expect(result.answer).toBe('Adesh is a software architect.');
+    });
+
+    it('should return missing info fallback and zero sources when no chunks retrieved', async () => {
+      const mockMessage = 'What is his favorite color?';
+      mockRetrievalService.retrieve.mockResolvedValue([]);
+
+      const result = await service.handleUserMessage(mockMessage);
+
+      expect(mockRetrievalService.retrieve).toHaveBeenCalledWith(mockMessage);
+      expect(mockGeminiService.generateAnswer).not.toHaveBeenCalled();
+
+      expect(result).toEqual({
+        answer: "I couldn't find that information in my knowledge base.",
+        sources: [],
+      });
+    });
+  });
+});
