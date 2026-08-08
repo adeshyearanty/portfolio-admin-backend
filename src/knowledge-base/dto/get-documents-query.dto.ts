@@ -26,12 +26,20 @@ export class GetDocumentsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Field to sort by',
-    enum: ['title', 'filename', 'createdAt', 'size', 'chunkCount'],
+    enum: ['title', 'filename', 'createdAt', 'uploadedAt', 'size', 'chunkCount'],
     default: 'createdAt',
   })
   @IsOptional()
-  @IsIn(['title', 'filename', 'createdAt', 'size', 'chunkCount'])
+  @IsIn(['title', 'filename', 'createdAt', 'uploadedAt', 'size', 'chunkCount'])
   sortBy?: string = 'createdAt';
+
+  @ApiPropertyOptional({
+    description: 'Alias for sortBy',
+    enum: ['title', 'filename', 'createdAt', 'uploadedAt', 'size', 'chunkCount'],
+  })
+  @IsOptional()
+  @IsIn(['title', 'filename', 'createdAt', 'uploadedAt', 'size', 'chunkCount'])
+  sortField?: string;
 
   @ApiPropertyOptional({
     description: 'Sort order direction',

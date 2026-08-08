@@ -221,7 +221,8 @@ export class KnowledgeBaseService {
     const page = queryDto?.page || 1;
     const limit = queryDto?.limit || 10;
     const search = queryDto?.search;
-    const sortBy = queryDto?.sortBy || 'createdAt';
+    const rawSort = queryDto?.sortField || queryDto?.sortBy || 'createdAt';
+    const sortBy = rawSort === 'uploadedAt' ? 'createdAt' : rawSort;
     const sortOrder = queryDto?.sortOrder || 'desc';
 
     const skip = (page - 1) * limit;
