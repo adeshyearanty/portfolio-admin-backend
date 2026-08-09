@@ -54,7 +54,7 @@ export class WhatsappWebhookController {
   constructor(
     private readonly configService: ConfigService,
     private readonly chatService: ChatService,
-  ) {}
+  ) { }
 
   @Get()
   @HttpCode(HttpStatus.OK)
@@ -68,6 +68,8 @@ export class WhatsappWebhookController {
     const configuredToken = this.configService.get<string>(
       'app.whatsappVerifyToken',
     );
+    this.logger.log('config: ' + configuredToken);
+    this.logger.log('query: ' + JSON.stringify({ mode, challenge, token }));
 
     if (mode === 'subscribe' && token === configuredToken) {
       this.logger.log('Webhook verified successfully!');
@@ -155,7 +157,7 @@ export class WhatsappWebhookController {
     if (!phoneNumberId || !accessToken) {
       this.logger.error(
         'WhatsApp ACCESS_TOKEN or PHONE_NUMBER_ID is not configured. Reply output log: ' +
-          replyText,
+        replyText,
       );
       return;
     }
