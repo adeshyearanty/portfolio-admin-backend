@@ -2,11 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EmbeddingsService } from './embeddings.service';
 import { ConfigService } from '@nestjs/config';
 
-// Mock @xenova/transformers module
+// Mock @huggingface/transformers module
 const mockExtractor = jest.fn();
 const mockPipeline = jest.fn().mockResolvedValue(mockExtractor);
 
-jest.mock('@xenova/transformers', () => {
+jest.mock('@huggingface/transformers', () => {
   return {
     pipeline: mockPipeline,
   };

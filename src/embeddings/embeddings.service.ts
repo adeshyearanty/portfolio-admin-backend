@@ -45,7 +45,7 @@ export class EmbeddingsService implements IEmbeddingsService, OnModuleInit {
       this.logger.log(
         `Embedding model initialization started: ${this.modelName}`,
       );
-      const { pipeline } = await import('@xenova/transformers');
+      const { pipeline } = await import('@huggingface/transformers');
       this.logger.log('Loading local embedding model...');
       this.extractor = await pipeline('feature-extraction', this.modelName);
       this.logger.log('Embedding model ready');
