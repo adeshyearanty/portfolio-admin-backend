@@ -82,7 +82,6 @@ describe('ChatService', () => {
         expect.stringContaining(
           '[Source 1 - profile.txt]:\nAdesh is a software architect.',
         ),
-        expect.stringContaining("You are Adesh's AI assistant."),
       );
 
       // Assert final response shape
@@ -140,7 +139,6 @@ describe('ChatService', () => {
         expect.stringContaining(
           'Conversation History:\nUser: Hello\nAssistant: Hi, how can I help?',
         ),
-        expect.any(String),
       );
 
       // Verify both messages saved to memory
@@ -161,17 +159,23 @@ describe('ChatService', () => {
       expect(result.answer).toBe('Adesh is a software architect.');
     });
 
-    it('should return missing info fallback and zero sources when no chunks retrieved', async () => {
+    it('should invoke Gemini and return empty sources when no chunks retrieved', async () => {
       const mockMessage = 'What is his favorite color?';
       mockRetrievalService.retrieve.mockResolvedValue([]);
+      mockGeminiService.generateAnswer.mockResolvedValue(
+        "I don't have enough information about that in my portfolio details yet.",
+      );
 
       const result = await service.handleUserMessage(mockMessage);
 
       expect(mockRetrievalService.retrieve).toHaveBeenCalledWith(mockMessage);
-      expect(mockGeminiService.generateAnswer).not.toHaveBeenCalled();
+      expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
+        mockMessage,
+        '',
+      );
 
       expect(result).toEqual({
-        answer: "I couldn't find that information in my knowledge base.",
+        answer: "I don't have enough information about that in my portfolio details yet.",
         sources: [],
       });
     });

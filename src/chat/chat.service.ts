@@ -24,32 +24,16 @@ export class ChatService {
     const retrieved = await this.retrievalService.retrieve(message);
     this.logger.log(`Retrieved ${retrieved.length} relevant chunks`);
 
-    // If no context matched the threshold, we immediately return the fallback text
-    // as per: "If information is missing say 'I couldn't find that information in my knowledge base.'"
-    if (retrieved.length === 0) {
-      const fallbackAnswer =
-        "I couldn't find that information in my knowledge base.";
-      if (sessionId) {
-        this.chatMemoryService.saveMessage(sessionId, 'user', message);
-        this.chatMemoryService.saveMessage(
-          sessionId,
-          'assistant',
-          fallbackAnswer,
-        );
-      }
-      return {
-        answer: fallbackAnswer,
-        sources: [],
-      };
-    }
-
-    // 2. Build context block
-    const contextText = retrieved
-      .map(
-        (item, index) =>
-          `[Source ${index + 1} - ${item.metadata.filename}]:\n${item.chunk}`,
-      )
-      .join('\n\n');
+    // 2. Build context block from retrieved chunks
+    const contextText =
+      retrieved.length > 0
+        ? retrieved
+            .map(
+              (item, index) =>
+                `[Source ${index + 1} - ${item.metadata.filename}]:\n${item.chunk}`,
+            )
+            .join('\n\n')
+        : '';
 
     // 3. Retrieve and format conversation memory if sessionId is provided
     let contextWithMemory = contextText;
@@ -62,30 +46,25 @@ export class ChatService {
               `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.text}`,
           )
           .join('\n');
-        contextWithMemory = `Conversation History:\n${historyText}\n\nContext:\n${contextText}`;
+        contextWithMemory = contextText
+          ? `Conversation History:\n${historyText}\n\nContext:\n${contextText}`
+          : `Conversation History:\n${historyText}`;
       }
     }
 
-    // 4. Define system instructions
-    const systemInstruction = `You are Adesh's AI assistant.
-Only answer using supplied context.
-Never hallucinate.
-If information is missing say "I couldn't find that information in my knowledge base."`;
-
-    // 5. Generate response using Gemini Service (gemini-2.5-flash)
+    // 4. Generate response using Gemini Service
     const answer = await this.geminiService.generateAnswer(
       message,
       contextWithMemory,
-      systemInstruction,
     );
 
-    // 6. Save message exchange to memory if sessionId is active
+    // 5. Save message exchange to memory if sessionId is active
     if (sessionId) {
       this.chatMemoryService.saveMessage(sessionId, 'user', message);
       this.chatMemoryService.saveMessage(sessionId, 'assistant', answer);
     }
 
-    // 7. Format sources
+    // 6. Format sources
     const sources = retrieved.map((item) => ({
       documentId: item.metadata.documentId,
       filename: item.metadata.filename,
