@@ -18,4 +18,13 @@ export class MessageDto {
   @IsOptional()
   @IsString()
   sessionId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Target formatting channel (web or whatsapp)',
+    enum: ['web', 'whatsapp'],
+    default: 'web',
+  })
+  @IsOptional()
+  @IsString()
+  channel?: 'web' | 'whatsapp';
 }

@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { GeminiService } from '../llm/gemini.service';
 import { RetrievalService } from '../knowledge-base/retrieval.service';
 import { ChatMemoryService } from './chat-memory.service';
+import { WhatsAppMessageFormatter } from './whatsapp-message-formatter.service';
+import { ChatResponseDto } from './dto/chat-response.dto';
 
 @Injectable()
 export class ChatService {
@@ -11,13 +13,18 @@ export class ChatService {
     private readonly retrievalService: RetrievalService,
     private readonly geminiService: GeminiService,
     private readonly chatMemoryService: ChatMemoryService,
+    private readonly whatsappFormatter: WhatsAppMessageFormatter,
   ) {}
 
-  async handleUserMessage(message: string, sessionId?: string) {
+  async handleUserMessage(
+    message: string,
+    sessionId?: string,
+    channel: 'web' | 'whatsapp' = 'web',
+  ): Promise<ChatResponseDto> {
     this.logger.log(
       `Handling message: "${message}"${
         sessionId ? ` for session: ${sessionId}` : ''
-      }`,
+      } [channel: ${channel}]`,
     );
 
     // 1. Retrieve top chunks using RetrievalService
@@ -52,19 +59,26 @@ export class ChatService {
       }
     }
 
-    // 4. Generate response using Gemini Service
-    const answer = await this.geminiService.generateAnswer(
+    // 4. Generate response using Gemini Service with target channel awareness
+    const rawAnswer = await this.geminiService.generateAnswer(
       message,
       contextWithMemory,
+      channel,
     );
 
-    // 5. Save message exchange to memory if sessionId is active
+    // 5. Normalize formatting for target channel
+    const answer =
+      channel === 'whatsapp'
+        ? this.whatsappFormatter.format(rawAnswer)
+        : rawAnswer;
+
+    // 6. Save message exchange to memory if sessionId is active
     if (sessionId) {
       this.chatMemoryService.saveMessage(sessionId, 'user', message);
       this.chatMemoryService.saveMessage(sessionId, 'assistant', answer);
     }
 
-    // 6. Format sources
+    // 7. Format sources
     const sources = retrieved.map((item) => ({
       documentId: item.metadata.documentId,
       filename: item.metadata.filename,

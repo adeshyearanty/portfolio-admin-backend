@@ -129,6 +129,7 @@ export class WhatsappWebhookController {
       const response = await this.chatService.handleUserMessage(
         messageText,
         sender,
+        'whatsapp',
       );
 
       // 6. Send reply message using Meta API

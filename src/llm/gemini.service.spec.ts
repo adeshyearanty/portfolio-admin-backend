@@ -73,11 +73,36 @@ describe('GeminiService', () => {
     });
   });
 
+  describe('getSystemInstruction', () => {
+    it('should return WhatsApp-specific formatting instructions when channel is whatsapp', () => {
+      const instruction = service.getSystemInstruction('whatsapp');
+      expect(instruction).toContain('WHATSAPP FORMATTING RULES:');
+      expect(instruction).toContain('*single asterisks*');
+      expect(instruction).not.toContain('WEB MARKDOWN FORMATTING RULES:');
+    });
+
+    it('should return Web Markdown formatting instructions when channel is web', () => {
+      const instruction = service.getSystemInstruction('web');
+      expect(instruction).toContain('WEB MARKDOWN FORMATTING RULES:');
+      expect(instruction).toContain('**text**');
+    });
+  });
+
   describe('generateAnswer', () => {
-    it('should return a non-streaming string answer', async () => {
+    it('should return a non-streaming string answer for web channel', async () => {
       const answer = await service.generateAnswer(
         'Who are you?',
         'Context info',
+        'web',
+      );
+      expect(answer).toBe('Mocked Gemini answer text');
+    });
+
+    it('should return a non-streaming string answer for whatsapp channel', async () => {
+      const answer = await service.generateAnswer(
+        'Who are you?',
+        'Context info',
+        'whatsapp',
       );
       expect(answer).toBe('Mocked Gemini answer text');
     });

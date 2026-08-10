@@ -157,6 +157,7 @@ describe('WhatsappWebhookController', () => {
       expect(handleUserMessageMock).toHaveBeenCalledWith(
         'Hello AI',
         '1234567890',
+        'whatsapp',
       );
       expect(mockFetch).toHaveBeenCalledWith(
         'https://graph.facebook.com/v20.0/phone-id-123/messages',

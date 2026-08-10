@@ -25,6 +25,7 @@ export class ChatController {
     return this.chatService.handleUserMessage(
       messageDto.message,
       messageDto.sessionId,
+      messageDto.channel || 'web',
     );
   }
 }

@@ -3,6 +3,7 @@ import { ChatService } from './chat.service';
 import { GeminiService } from '../llm/gemini.service';
 import { RetrievalService } from '../knowledge-base/retrieval.service';
 import { ChatMemoryService } from './chat-memory.service';
+import { WhatsAppMessageFormatter } from './whatsapp-message-formatter.service';
 
 describe('ChatService', () => {
   let service: ChatService;
@@ -26,6 +27,7 @@ describe('ChatService', () => {
       providers: [
         ChatService,
         ChatMemoryService,
+        WhatsAppMessageFormatter,
         {
           provide: RetrievalService,
           useValue: mockRetrievalService,
@@ -52,7 +54,7 @@ describe('ChatService', () => {
   });
 
   describe('handleUserMessage', () => {
-    it('should retrieve context, generate answer, and return sources', async () => {
+    it('should retrieve context, generate answer, and return sources for web channel', async () => {
       const mockMessage = 'Tell me about Adesh';
       const mockChunks = [
         {
@@ -68,7 +70,7 @@ describe('ChatService', () => {
 
       mockRetrievalService.retrieve.mockResolvedValue(mockChunks);
       mockGeminiService.generateAnswer.mockResolvedValue(
-        'Adesh is a software architect with expertise in Node.js.',
+        'Adesh is a software architect with expertise in **Node.js**.',
       );
 
       const result = await service.handleUserMessage(mockMessage);
@@ -82,11 +84,12 @@ describe('ChatService', () => {
         expect.stringContaining(
           '[Source 1 - profile.txt]:\nAdesh is a software architect.',
         ),
+        'web',
       );
 
       // Assert final response shape
       expect(result).toEqual({
-        answer: 'Adesh is a software architect with expertise in Node.js.',
+        answer: 'Adesh is a software architect with expertise in **Node.js**.',
         sources: [
           {
             documentId: 'doc-1',
@@ -95,6 +98,42 @@ describe('ChatService', () => {
           },
         ],
       });
+    });
+
+    it('should apply WhatsApp formatting when channel is whatsapp', async () => {
+      const mockMessage = 'What tech does Adesh know?';
+      const mockChunks = [
+        {
+          chunk: 'Frontend: React, Next.js. Backend: NestJS.',
+          score: 0.85,
+          metadata: {
+            documentId: 'doc-1',
+            filename: 'skills.txt',
+            chunkIndex: 0,
+          },
+        },
+      ];
+
+      mockRetrievalService.retrieve.mockResolvedValue(mockChunks);
+      mockGeminiService.generateAnswer.mockResolvedValue(
+        '* **Frontend:** React, Next.js\n* **Backend:** NestJS and **Node.js**',
+      );
+
+      const result = await service.handleUserMessage(
+        mockMessage,
+        'user-123',
+        'whatsapp',
+      );
+
+      expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
+        mockMessage,
+        expect.any(String),
+        'whatsapp',
+      );
+
+      expect(result.answer).toContain('• *Frontend:* React, Next.js');
+      expect(result.answer).toContain('• *Backend:* NestJS and *Node.js*');
+      expect(result.answer).not.toContain('**');
     });
 
     it('should retrieve from and save to conversation memory when sessionId is provided', async () => {
@@ -139,6 +178,7 @@ describe('ChatService', () => {
         expect.stringContaining(
           'Conversation History:\nUser: Hello\nAssistant: Hi, how can I help?',
         ),
+        'web',
       );
 
       // Verify both messages saved to memory
@@ -172,6 +212,7 @@ describe('ChatService', () => {
       expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
         mockMessage,
         '',
+        'web',
       );
 
       expect(result).toEqual({

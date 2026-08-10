@@ -14,7 +14,24 @@ export class GeminiService {
     cooldownPeriod: 15000,
   });
 
-  private readonly systemInstruction = `
+  getSystemInstruction(channel: 'web' | 'whatsapp' = 'web'): string {
+    const formattingRules =
+      channel === 'whatsapp'
+        ? `WHATSAPP FORMATTING RULES:
+- Use *single asterisks* for bold text (e.g. *React.js*, *NestJS*).
+- NEVER use double asterisks (**text**) or Markdown headings (### Heading).
+- Use bullet characters (•) for bulleted lists.
+- Use numbered lists (1., 2., 3.) when explaining step-by-step processes.
+- Use short paragraphs separated by blank lines.
+- Use emojis naturally and contextually (e.g. 💻, 🚀, ⚙️, 🤝, 👋).`
+        : `WEB MARKDOWN FORMATTING RULES:
+- Use standard Markdown bold (**text**) for important technologies, project names, companies, and roles.
+- Use bullet points (• or -) when listing multiple items.
+- Use numbered lists (1., 2., 3.) when explaining step-by-step processes.
+- Use short paragraphs separated by blank lines.
+- Use emojis naturally and contextually.`;
+
+    return `
 You are Adesh's personal AI portfolio assistant.
 
 Your role is to represent Adesh in friendly, conversational, and professional dialogues with visitors who are interested in his work, technical skills, projects, experience, background, or potential collaborations and hiring opportunities.
@@ -25,16 +42,9 @@ CORE IDENTITY & TONE:
 - Refer to Adesh in the third person (e.g., "Adesh", "his work", "his projects") or speak warmly on his behalf.
 - Do NOT pretend to literally be Adesh or claim to personally possess human life experiences.
 - Vary your openings naturally; do NOT start every response with "Sure!", "Certainly!", "Absolutely!", or similar filler phrases.
-- Emojis should be used naturally and contextually (e.g. 💻, 🚀, ⚙️, 🤝, 👋) to make messages engaging, but do NOT overuse them or use them mechanically in every sentence.
+- Emojis should be used naturally and contextually, but do NOT overuse them or use them mechanically in every sentence.
 
-FORMATTING & READABILITY:
-- Keep answers concise, clean, and easy to read.
-- Use short paragraphs separated by blank lines instead of large walls of text.
-- Use bold (**text**) for important technologies, project names, companies, roles, and core concepts.
-- Use bullet points (• or -) when listing multiple items, features, tech stacks, or responsibilities.
-- Use numbered lists (1., 2., 3.) when explaining step-by-step processes, workflows, or architectures.
-- Adapt the response length to the question: direct answers for simple questions, structured bulleted breakdowns for technical/architectural questions.
-- Avoid Markdown tables, raw HTML tags, or excessive # heading tags.
+${formattingRules}
 
 HANDLING DIFFERENT QUESTION TYPES:
 
@@ -43,7 +53,7 @@ HANDLING DIFFERENT QUESTION TYPES:
 
 2. SKILLS & TECHNOLOGY QUESTION:
    - Mention the relevant technologies and briefly explain how Adesh used them based on the context.
-   - Example: "Yes, Adesh has worked extensively with **NestJS**. He used it to build backend services for multi-tenant platforms, including REST APIs, microservices, authorization, and third-party integrations."
+   - Example: "Yes, Adesh has worked extensively with ${channel === 'whatsapp' ? '*NestJS*' : '**NestJS**'}. He used it to build backend services for multi-tenant platforms, including REST APIs, microservices, authorization, and third-party integrations."
 
 3. PROJECT QUESTION:
    - Explain what the project is, what Adesh built/worked on, key technologies, and important technical highlights using concise bullets.
@@ -59,10 +69,10 @@ HANDLING DIFFERENT QUESTION TYPES:
 
 7. "WHAT TECHNOLOGIES DO YOU KNOW?" / SKILLS INVENTORY:
    - Group technologies logically under clear categories, for example:
-     💻 **Frontend**: Next.js, React, TypeScript
-     ⚙️ **Backend**: NestJS, Node.js, Express
-     ☁️ **Cloud & DevOps**: AWS, Docker
-     🗄️ **Databases**: MongoDB, PostgreSQL
+     💻 ${channel === 'whatsapp' ? '*Frontend*' : '**Frontend**'}: Next.js, React, TypeScript
+     ⚙️ ${channel === 'whatsapp' ? '*Backend*' : '**Backend**'}: NestJS, Node.js, Express
+     ☁️ ${channel === 'whatsapp' ? '*Cloud & DevOps*' : '**Cloud & DevOps**'}: AWS, Docker
+     🗄️ ${channel === 'whatsapp' ? '*Databases*' : '**Databases**'}: MongoDB, PostgreSQL
    - Only include technologies that are explicitly supported by the background context.
 
 8. COMPARISON QUESTIONS:
@@ -84,7 +94,7 @@ HANDLING DIFFERENT QUESTION TYPES:
     - Answer the part that is supported by the context, clearly state what is known, and do not invent the missing details.
 
 12. AMBIGUOUS QUESTIONS:
-    - If a question could refer to multiple projects or technologies, ask a short, natural clarification question (e.g., "Do you mean Adesh's work on **SalesAstra** or the **Pulse** system?").
+    - If a question could refer to multiple projects or technologies, ask a short, natural clarification question (e.g., "Do you mean Adesh's work on ${channel === 'whatsapp' ? '*SalesAstra*' : '**SalesAstra**'} or the ${channel === 'whatsapp' ? '*Pulse*' : '**Pulse**'} system?").
 
 13. GREETINGS & INTRODUCTIONS:
     - Respond warmly and naturally, inviting the visitor to explore.
@@ -113,6 +123,7 @@ When multiple context sources are present, prioritize in this order:
 5. FAQ
 6. General portfolio information
 `;
+  }
 
   constructor(private readonly configService: ConfigService) {
     const apiKey =
@@ -155,13 +166,17 @@ When multiple context sources are present, prioritize in this order:
   async generateAnswer(
     question: string,
     context: string,
+    channel: 'web' | 'whatsapp' = 'web',
     systemInstruction?: string,
   ): Promise<string> {
     this.logger.log(
-      `Generating answer for question: "${question.substring(0, 50)}..."`,
+      `Generating answer for question: "${question.substring(
+        0,
+        50,
+      )}..." (channel: ${channel})`,
     );
 
-    const prompt = this.buildPrompt(question, context);
+    const prompt = this.buildPrompt(question, context, channel);
 
     const response = await this.circuitBreaker.execute(() =>
       this.retryWithBackoff(() =>
@@ -169,7 +184,8 @@ When multiple context sources are present, prioritize in this order:
           model: this.modelName,
           contents: prompt,
           config: {
-            systemInstruction: systemInstruction || this.systemInstruction,
+            systemInstruction:
+              systemInstruction || this.getSystemInstruction(channel),
           },
         }),
       ),
@@ -185,16 +201,17 @@ When multiple context sources are present, prioritize in this order:
   async *generateAnswerStream(
     question: string,
     context: string,
+    channel: 'web' | 'whatsapp' = 'web',
     systemInstruction?: string,
   ): AsyncGenerator<string> {
     this.logger.log(
       `Generating streaming answer for question: "${question.substring(
         0,
         50,
-      )}..."`,
+      )}..." (channel: ${channel})`,
     );
 
-    const prompt = this.buildPrompt(question, context);
+    const prompt = this.buildPrompt(question, context, channel);
 
     const responseStream = await this.circuitBreaker.execute(() =>
       this.retryWithBackoff(() =>
@@ -202,7 +219,8 @@ When multiple context sources are present, prioritize in this order:
           model: this.modelName,
           contents: prompt,
           config: {
-            systemInstruction: systemInstruction || this.systemInstruction,
+            systemInstruction:
+              systemInstruction || this.getSystemInstruction(channel),
           },
         }),
       ),
@@ -215,7 +233,16 @@ When multiple context sources are present, prioritize in this order:
     }
   }
 
-  private buildPrompt(question: string, context: string): string {
+  private buildPrompt(
+    question: string,
+    context: string,
+    channel: 'web' | 'whatsapp' = 'web',
+  ): string {
+    const formattingHint =
+      channel === 'whatsapp'
+        ? '- Use WhatsApp-compatible formatting (*bold*, • bullets, 1. numbered lists). Never use **double asterisks** or markdown headings.'
+        : '- Use bold text for key terms/technologies, bullet points for lists, and numbered lists for steps.';
+
     return `
 BACKGROUND CONTEXT:
 ${context ? context : 'No specific background portfolio context retrieved.'}
@@ -228,7 +255,7 @@ Respond naturally, helpfully, and conversationally to the visitor message accord
 - Use the background context as the factual source of truth about Adesh.
 - If the visitor is greeting or introducing themselves, welcome them warmly and offer helpful conversation paths.
 - If the requested detail is not present in the background context, provide a natural portfolio fallback without using internal RAG or technical AI terminology.
-- Use bold text for key terms/technologies, bullet points for lists, and numbered lists for steps.
+${formattingHint}
 `;
   }
 }
