@@ -195,24 +195,35 @@ describe('ChatSessionService', () => {
   });
 
   describe('updateSessionTitle', () => {
-    it('should generate title from short message', async () => {
+    it('should generate categorized summary title from prompt', async () => {
       sessionRepo.update.mockResolvedValue(null);
       await service.updateSessionTitle('session-1', 'Hello there');
 
       expect(sessionRepo.update).toHaveBeenCalledWith('session-1', {
-        title: 'Hello there',
+        title: 'Introduction & Overview',
       });
     });
 
-    it('should truncate long messages at word boundary', async () => {
+    it('should generate summarized topic for technical questions', async () => {
       const longMessage =
         'What projects have you worked on and what technologies did you use for building them?';
       sessionRepo.update.mockResolvedValue(null);
       await service.updateSessionTitle('session-1', longMessage);
 
+      expect(sessionRepo.update).toHaveBeenCalledWith('session-1', {
+        title: 'Technical Skills & Stack',
+      });
+    });
+
+    it('should strip filler prefixes for custom questions', async () => {
+      sessionRepo.update.mockResolvedValue(null);
+      await service.updateSessionTitle(
+        'session-1',
+        'Can you tell me about the query optimization techniques?',
+      );
+
       const call = sessionRepo.update.mock.calls[0];
-      expect(call[1].title!.length).toBeLessThanOrEqual(53); // 50 + "..."
-      expect(call[1].title!.endsWith('...')).toBe(true);
+      expect(call[1].title).toBe('Query optimization techniques');
     });
   });
 });
