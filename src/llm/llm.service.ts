@@ -281,7 +281,7 @@ ${formattingHint}
       ),
     );
 
-    const content = response.choices[0]?.message?.content;
+    const content = (response as any)?.choices?.[0]?.message?.content;
     if (!content || !content.trim()) {
       throw new Error('LLM provider returned empty response text');
     }
@@ -325,8 +325,8 @@ ${formattingHint}
       ),
     );
 
-    for await (const chunk of responseStream) {
-      const text = chunk.choices[0]?.delta?.content;
+    for await (const chunk of (responseStream as any)) {
+      const text = chunk?.choices?.[0]?.delta?.content;
       if (text) {
         yield text;
       }
