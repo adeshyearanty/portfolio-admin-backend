@@ -3,6 +3,8 @@ import { ChatService } from './chat.service';
 import { GeminiService } from '../llm/gemini.service';
 import { RetrievalService } from '../knowledge-base/retrieval.service';
 import { ChatMemoryService } from './chat-memory.service';
+import { ChatMessageService } from './chat-message.service';
+import { ChatSessionService } from './chat-session.service';
 import { WhatsAppMessageFormatter } from './whatsapp-message-formatter.service';
 
 describe('ChatService', () => {
@@ -16,6 +18,20 @@ describe('ChatService', () => {
   const mockGeminiService = {
     generateAnswer: jest.fn(),
     generateAnswerStream: jest.fn(),
+  };
+
+  const mockChatMessageService = {
+    saveUserMessage: jest.fn(),
+    createAssistantMessage: jest.fn(),
+    completeMessage: jest.fn(),
+    failMessage: jest.fn(),
+    getSessionMessages: jest.fn(),
+  };
+
+  const mockChatSessionService = {
+    validateSessionOwnership: jest.fn(),
+    updateSessionTitle: jest.fn(),
+    updateLastMessageAt: jest.fn(),
   };
 
   let module: TestingModule;
@@ -35,6 +51,14 @@ describe('ChatService', () => {
         {
           provide: GeminiService,
           useValue: mockGeminiService,
+        },
+        {
+          provide: ChatMessageService,
+          useValue: mockChatMessageService,
+        },
+        {
+          provide: ChatSessionService,
+          useValue: mockChatSessionService,
         },
       ],
     }).compile();
