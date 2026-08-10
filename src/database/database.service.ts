@@ -28,7 +28,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.client = new MongoClient(uri, {
       serverApi: {
         version: ServerApiVersion.v1,
-        strict: true,
+        strict: false,
         deprecationErrors: true,
       },
     });
