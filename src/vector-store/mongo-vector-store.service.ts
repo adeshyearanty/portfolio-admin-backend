@@ -7,23 +7,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from '../database/database.service';
 import { IVectorStoreService } from '../interfaces/vector-store.interface';
+import { KnowledgeChunkDocument } from '../knowledge-base/schemas/knowledge-chunk.schema';
 import { Document } from 'mongodb';
-
-export interface MongoChunkDocument extends Document {
-  _id: string;
-  documentId: string;
-  chunkIndex: number;
-  content: string;
-  embedding: number[];
-  metadata: {
-    documentId: string;
-    filename: string;
-    chunkIndex: number;
-    text: string;
-    [key: string]: unknown;
-  };
-  createdAt: Date;
-}
 
 @Injectable()
 export class MongoVectorStoreService implements IVectorStoreService {
@@ -43,7 +28,7 @@ export class MongoVectorStoreService implements IVectorStoreService {
   }
 
   private get collection() {
-    return this.databaseService.collection<MongoChunkDocument>(
+    return this.databaseService.collection<KnowledgeChunkDocument>(
       this.collectionName,
     );
   }
@@ -89,7 +74,7 @@ export class MongoVectorStoreService implements IVectorStoreService {
     }
 
     const now = new Date();
-    const chunkDocs: MongoChunkDocument[] = ids.map((id, index) => {
+    const chunkDocs: KnowledgeChunkDocument[] = ids.map((id, index) => {
       const embedding = embeddings[index];
       if (
         !Array.isArray(embedding) ||
@@ -114,6 +99,7 @@ export class MongoVectorStoreService implements IVectorStoreService {
           text: documents[index],
         },
         createdAt: now,
+        updatedAt: now,
       };
     });
 
@@ -187,7 +173,7 @@ export class MongoVectorStoreService implements IVectorStoreService {
       ];
 
       const searchResults = await this.collection
-        .aggregate<MongoChunkDocument & { score?: number }>(pipeline)
+        .aggregate<KnowledgeChunkDocument & { score?: number }>(pipeline)
         .toArray();
 
       if (searchResults.length > 0) {
@@ -199,10 +185,10 @@ export class MongoVectorStoreService implements IVectorStoreService {
             id: String(doc._id),
             score: rawDistance,
             metadata: {
-              documentId: doc.documentId || doc.metadata?.documentId || '',
-              filename: doc.metadata?.filename || '',
-              chunkIndex: doc.chunkIndex ?? doc.metadata?.chunkIndex ?? 0,
-              text: doc.content || doc.metadata?.text || '',
+              documentId: String(doc.documentId || doc.metadata?.documentId || ''),
+              filename: String(doc.metadata?.filename || ''),
+              chunkIndex: Number(doc.chunkIndex ?? doc.metadata?.chunkIndex ?? 0),
+              text: String(doc.content || doc.metadata?.text || ''),
             },
           };
         });
@@ -224,10 +210,10 @@ export class MongoVectorStoreService implements IVectorStoreService {
         id: String(chunk._id),
         score: rawDistance,
         metadata: {
-          documentId: chunk.documentId || chunk.metadata?.documentId || '',
-          filename: chunk.metadata?.filename || '',
-          chunkIndex: chunk.chunkIndex ?? chunk.metadata?.chunkIndex ?? 0,
-          text: chunk.content || chunk.metadata?.text || '',
+          documentId: String(chunk.documentId || chunk.metadata?.documentId || ''),
+          filename: String(chunk.metadata?.filename || ''),
+          chunkIndex: Number(chunk.chunkIndex ?? chunk.metadata?.chunkIndex ?? 0),
+          text: String(chunk.content || chunk.metadata?.text || ''),
         },
       };
     });

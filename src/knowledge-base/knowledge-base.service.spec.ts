@@ -151,7 +151,9 @@ describe('KnowledgeBaseService', () => {
       expect(mockStorageService.deleteFile).toHaveBeenCalledWith(
         expect.any(String),
       );
-      expect(mockDocumentRepository.delete).toHaveBeenCalledWith('doc-123');
+      expect(mockDocumentRepository.update).toHaveBeenCalledWith('doc-123', {
+        status: 'FAILED',
+      });
     });
   });
 
@@ -367,6 +369,68 @@ describe('KnowledgeBaseService', () => {
       );
       expect(mockDocumentRepository.update).toHaveBeenCalledWith('doc-123', {
         status: 'COMPLETED',
+      });
+    });
+  });
+
+  describe('reindex', () => {
+    it('should successfully reindex existing documents', async () => {
+      const mockDoc = {
+        id: 'doc-123',
+        title: 'test.txt',
+        filename: 'unique.txt',
+        mimeType: 'text/plain',
+        status: 'COMPLETED',
+      };
+
+      mockDocumentRepository.findManyAndCount.mockResolvedValue([[mockDoc], 1]);
+      mockStorageService.getFile.mockResolvedValue(Buffer.from('hello world'));
+      mockParser.parse.mockResolvedValue('parsed text content');
+      mockChunkService.chunkDocument.mockReturnValue([
+        { chunkText: 'chunk 1 text', estimatedTokens: 3 },
+      ]);
+      mockEmbeddingsService.generateEmbeddings.mockResolvedValue([[0.1, 0.2]]);
+      mockVectorStoreService.deleteDocument.mockResolvedValue(undefined);
+      mockVectorStoreService.insertVectors.mockResolvedValue(undefined);
+      mockDocumentRepository.update.mockResolvedValue({
+        ...mockDoc,
+        status: 'COMPLETED',
+        chunkCount: 1,
+      });
+
+      const result = await service.reindex();
+
+      expect(result.total).toBe(1);
+      expect(result.succeeded).toEqual(['doc-123']);
+      expect(result.failed).toEqual([]);
+      expect(mockDocumentRepository.update).toHaveBeenCalledWith('doc-123', {
+        status: 'PROCESSING',
+      });
+      expect(mockDocumentRepository.update).toHaveBeenCalledWith('doc-123', {
+        status: 'COMPLETED',
+        chunkCount: 1,
+      });
+    });
+
+    it('should update status to FAILED if reindexing fails for a document', async () => {
+      const mockDoc = {
+        id: 'doc-123',
+        title: 'test.txt',
+        filename: 'unique.txt',
+        mimeType: 'text/plain',
+        status: 'COMPLETED',
+      };
+
+      mockDocumentRepository.findManyAndCount.mockResolvedValue([[mockDoc], 1]);
+      mockStorageService.getFile.mockRejectedValue(new Error('File not found'));
+
+      const result = await service.reindex();
+
+      expect(result.total).toBe(1);
+      expect(result.succeeded).toEqual([]);
+      expect(result.failed).toEqual([{ id: 'doc-123', error: 'File not found' }]);
+      expect(mockDocumentRepository.update).toHaveBeenCalledWith('doc-123', {
+        status: 'FAILED',
       });
     });
   });

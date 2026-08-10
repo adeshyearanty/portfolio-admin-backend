@@ -31,7 +31,11 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  GOOGLE_API_KEY = '';
+  GROQ_API_KEY = '';
+
+  @IsString()
+  @IsOptional()
+  LLM_MODEL = 'openai/gpt-oss-120b';
 
   @IsString()
   @IsOptional()
@@ -39,11 +43,15 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  EMBEDDING_MODEL = 'gemini-embedding-2';
+  EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2';
 
   @IsString()
   @IsOptional()
-  CHAT_MODEL = 'gemini-2.5-flash';
+  EMBEDDING_PROVIDER = 'local';
+
+  @IsString()
+  @IsOptional()
+  EMBEDDING_DIMENSIONS = '384';
 
   @IsString()
   @IsOptional()
@@ -51,19 +59,19 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  VERIFY_TOKEN = 'my-verify-token-1234';
+  WHATSAPP_VERIFY_TOKEN = 'my-verify-token-1234';
 
   @IsString()
   @IsOptional()
-  ACCESS_TOKEN = '';
+  WHATSAPP_ACCESS_TOKEN = '';
 
   @IsString()
   @IsOptional()
-  PHONE_NUMBER_ID = '';
+  WHATSAPP_PHONE_NUMBER_ID = '';
 
   @IsString()
   @IsOptional()
-  SIMILARITY_THRESHOLD = '0.35';
+  SIMILARITY_THRESHOLD = '0.15';
 
   @IsString()
   @IsOptional()

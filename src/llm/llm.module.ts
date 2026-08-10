@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { LlmService } from './llm.service';
-import { GeminiService } from './gemini.service';
 import { ILlmService } from '../interfaces/llm-service.interface';
 
 @Module({
@@ -9,8 +8,8 @@ import { ILlmService } from '../interfaces/llm-service.interface';
       provide: ILlmService,
       useClass: LlmService,
     },
-    GeminiService,
+    LlmService,
   ],
-  exports: [ILlmService, GeminiService],
+  exports: [ILlmService, LlmService],
 })
 export class LlmModule {}

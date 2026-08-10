@@ -193,15 +193,17 @@ export class KnowledgeBaseService {
           );
         }
 
-        // C. Delete database metadata record
+        // C. Update database metadata record to FAILED
         try {
-          await this.documentRepository.delete(documentId);
+          await this.documentRepository.update(documentId, {
+            status: 'FAILED',
+          });
           this.logger.log(
-            `[ROLLBACK] Database record for document ${documentId} deleted`,
+            `[ROLLBACK] Updated database record for document ${documentId} status to FAILED`,
           );
         } catch (err) {
           this.logger.error(
-            `[ROLLBACK FAILURE] Failed to delete database record for document ${documentId}`,
+            `[ROLLBACK FAILURE] Failed to update database record status for document ${documentId} to FAILED`,
             err instanceof Error ? err.stack : undefined,
           );
         }
@@ -528,4 +530,103 @@ export class KnowledgeBaseService {
       );
     }
   }
+
+  async reindex(): Promise<{
+    total: number;
+    succeeded: string[];
+    failed: Array<{ id: string; error: string }>;
+  }> {
+    this.logger.log('Re-index started');
+    const [documents] = await this.documentRepository.findManyAndCount({
+      skip: 0,
+      take: 1000,
+    });
+
+    const succeeded: string[] = [];
+    const failed: Array<{ id: string; error: string }> = [];
+
+    for (const doc of documents) {
+      this.logger.log(`Re-indexing document: ${doc.title} (${doc.id})`);
+      try {
+        await this.documentRepository.update(doc.id, { status: 'PROCESSING' });
+
+        const buffer = await this.storageService.getFile(doc.filename);
+
+        const parser = this.parserFactory.getParser(
+          doc.mimeType,
+          extname(doc.filename),
+        );
+        const cleanedText = await parser.parse(buffer);
+
+        if (!cleanedText || cleanedText.trim() === '') {
+          throw new Error('Document contains no parseable text content');
+        }
+
+        const chunks = this.chunkService.chunkDocument(doc.id, cleanedText);
+
+        if (chunks.length === 0) {
+          throw new Error('Failed to generate any chunks from the document text');
+        }
+
+        const chunkTexts = chunks.map((c) => c.chunkText);
+        const vectors = await this.embeddingsService.generateEmbeddings(chunkTexts);
+
+        try {
+          await this.vectorStoreService.deleteDocument(doc.id);
+        } catch (err) {
+          this.logger.warn(
+            `Failed to delete old vector store chunks for document ${doc.id} (continuing): ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+
+        const ids = chunks.map((_, index) => `${doc.id}-chunk-${index}`);
+        const metadatas = chunks.map((c, index) => ({
+          documentId: doc.id,
+          filename: doc.filename,
+          chunkIndex: index,
+          text: c.chunkText,
+        }));
+
+        await this.vectorStoreService.insertVectors(
+          ids,
+          vectors,
+          metadatas,
+          chunkTexts,
+        );
+
+        await this.documentRepository.update(doc.id, {
+          status: 'COMPLETED',
+          chunkCount: chunks.length,
+        });
+
+        this.logger.log(`Successfully re-indexed document: ${doc.title} (${doc.id})`);
+        succeeded.push(doc.id);
+      } catch (err: any) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Re-index failed for document ${doc.id}: ${errMsg}`);
+        failed.push({ id: doc.id, error: errMsg });
+
+        try {
+          await this.documentRepository.update(doc.id, { status: 'FAILED' });
+        } catch (updateErr) {
+          this.logger.error(`Failed to mark document ${doc.id} as FAILED: ${updateErr}`);
+        }
+      }
+    }
+
+    if (failed.length > 0) {
+      this.logger.error(`Re-index completed with ${failed.length} failures out of ${documents.length}`);
+    } else {
+      this.logger.log('Re-index completed successfully');
+    }
+
+    return {
+      total: documents.length,
+      succeeded,
+      failed,
+    };
+  }
 }
+

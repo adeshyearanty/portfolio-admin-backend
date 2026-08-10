@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { GeminiService } from '../llm/gemini.service';
+import { LlmService } from '../llm/llm.service';
 import { RetrievalService } from '../knowledge-base/retrieval.service';
 import { ChatMemoryService } from './chat-memory.service';
 import { ChatMessageService } from './chat-message.service';
@@ -14,7 +14,7 @@ export class ChatService {
 
   constructor(
     private readonly retrievalService: RetrievalService,
-    private readonly geminiService: GeminiService,
+    private readonly llmService: LlmService,
     private readonly chatMemoryService: ChatMemoryService,
     private readonly whatsappFormatter: WhatsAppMessageFormatter,
     private readonly chatMessageService: ChatMessageService,
@@ -68,8 +68,8 @@ export class ChatService {
       }
     }
 
-    // 4. Generate response using Gemini Service with target channel awareness
-    const rawAnswer = await this.geminiService.generateAnswer(
+    // 4. Generate response using LLM Service with target channel awareness
+    const rawAnswer = await this.llmService.generateAnswer(
       message,
       contextWithMemory,
       channel,
@@ -183,11 +183,11 @@ export class ChatService {
 
     yield { type: 'start', messageId: assistantMessage.id };
 
-    // 7. Stream from Gemini
+    // 7. Stream from LLM
     let accumulatedContent = '';
 
     try {
-      const stream = this.geminiService.generateAnswerStream(
+      const stream = this.llmService.generateAnswerStream(
         message,
         fullContext,
         'web',

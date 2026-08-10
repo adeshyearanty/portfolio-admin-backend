@@ -141,4 +141,17 @@ export class KnowledgeBaseController {
     const text = await this.knowledgeBaseService.extractText(id);
     return { text };
   }
+
+  @Post('reindex')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Re-index existing documents using the local embedding model into MongoDB',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Document re-indexing completed',
+  })
+  async reindex() {
+    return this.knowledgeBaseService.reindex();
+  }
 }

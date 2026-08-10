@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ChatService } from './chat.service';
-import { GeminiService } from '../llm/gemini.service';
+import { LlmService } from '../llm/llm.service';
 import { RetrievalService } from '../knowledge-base/retrieval.service';
 import { ChatMemoryService } from './chat-memory.service';
 import { ChatMessageService } from './chat-message.service';
@@ -15,7 +15,7 @@ describe('ChatService', () => {
     retrieve: jest.fn(),
   };
 
-  const mockGeminiService = {
+  const mockLlmService = {
     generateAnswer: jest.fn(),
     generateAnswerStream: jest.fn(),
   };
@@ -49,8 +49,8 @@ describe('ChatService', () => {
           useValue: mockRetrievalService,
         },
         {
-          provide: GeminiService,
-          useValue: mockGeminiService,
+          provide: LlmService,
+          useValue: mockLlmService,
         },
         {
           provide: ChatMessageService,
@@ -93,7 +93,7 @@ describe('ChatService', () => {
       ];
 
       mockRetrievalService.retrieve.mockResolvedValue(mockChunks);
-      mockGeminiService.generateAnswer.mockResolvedValue(
+      mockLlmService.generateAnswer.mockResolvedValue(
         'Adesh is a software architect with expertise in **Node.js**.',
       );
 
@@ -102,8 +102,8 @@ describe('ChatService', () => {
       // Verify retrieval query
       expect(mockRetrievalService.retrieve).toHaveBeenCalledWith(mockMessage);
 
-      // Verify Gemini parameters
-      expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
+      // Verify LLM parameters
+      expect(mockLlmService.generateAnswer).toHaveBeenCalledWith(
         mockMessage,
         expect.stringContaining(
           '[Source 1 - profile.txt]:\nAdesh is a software architect.',
@@ -139,7 +139,7 @@ describe('ChatService', () => {
       ];
 
       mockRetrievalService.retrieve.mockResolvedValue(mockChunks);
-      mockGeminiService.generateAnswer.mockResolvedValue(
+      mockLlmService.generateAnswer.mockResolvedValue(
         '* **Frontend:** React, Next.js\n* **Backend:** NestJS and **Node.js**',
       );
 
@@ -149,7 +149,7 @@ describe('ChatService', () => {
         'whatsapp',
       );
 
-      expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
+      expect(mockLlmService.generateAnswer).toHaveBeenCalledWith(
         mockMessage,
         expect.any(String),
         'whatsapp',
@@ -175,7 +175,7 @@ describe('ChatService', () => {
       ];
 
       mockRetrievalService.retrieve.mockResolvedValue(mockChunks);
-      mockGeminiService.generateAnswer.mockResolvedValue(
+      mockLlmService.generateAnswer.mockResolvedValue(
         'Adesh is a software architect.',
       );
 
@@ -196,8 +196,8 @@ describe('ChatService', () => {
       // Verify history query
       expect(getHistorySpy).toHaveBeenCalledWith('session-123');
 
-      // Verify Gemini parameters contain history text
-      expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
+      // Verify LLM parameters contain history text
+      expect(mockLlmService.generateAnswer).toHaveBeenCalledWith(
         mockMessage,
         expect.stringContaining(
           'Conversation History:\nUser: Hello\nAssistant: Hi, how can I help?',
@@ -223,17 +223,17 @@ describe('ChatService', () => {
       expect(result.answer).toBe('Adesh is a software architect.');
     });
 
-    it('should invoke Gemini and return empty sources when no chunks retrieved', async () => {
+    it('should invoke LLM and return empty sources when no chunks retrieved', async () => {
       const mockMessage = 'What is his favorite color?';
       mockRetrievalService.retrieve.mockResolvedValue([]);
-      mockGeminiService.generateAnswer.mockResolvedValue(
+      mockLlmService.generateAnswer.mockResolvedValue(
         "I don't have enough information about that in my portfolio details yet.",
       );
 
       const result = await service.handleUserMessage(mockMessage);
 
       expect(mockRetrievalService.retrieve).toHaveBeenCalledWith(mockMessage);
-      expect(mockGeminiService.generateAnswer).toHaveBeenCalledWith(
+      expect(mockLlmService.generateAnswer).toHaveBeenCalledWith(
         mockMessage,
         '',
         'web',
