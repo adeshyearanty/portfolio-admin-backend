@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
-import { LlmService } from './llm.service';
+import { NemotronService } from './nemotron.service';
 import { ILlmService } from '../interfaces/llm-service.interface';
 
 @Module({
   providers: [
     {
       provide: ILlmService,
-      useClass: LlmService,
+      useClass: NemotronService,
     },
-    LlmService,
+    NemotronService,
   ],
-  exports: [ILlmService, LlmService],
+  exports: [ILlmService, NemotronService],
 })
 export class LlmModule {}

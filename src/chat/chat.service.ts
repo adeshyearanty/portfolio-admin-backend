@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { LlmService } from '../llm/llm.service';
+import { NemotronService } from '../llm/nemotron.service';
 import { RetrievalService } from '../knowledge-base/retrieval.service';
 import { ChatMemoryService } from './chat-memory.service';
 import { ChatMessageService } from './chat-message.service';
@@ -14,7 +14,7 @@ export class ChatService {
 
   constructor(
     private readonly retrievalService: RetrievalService,
-    private readonly llmService: LlmService,
+    private readonly llmService: NemotronService,
     private readonly chatMemoryService: ChatMemoryService,
     private readonly whatsappFormatter: WhatsAppMessageFormatter,
     private readonly chatMessageService: ChatMessageService,
