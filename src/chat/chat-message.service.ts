@@ -17,6 +17,7 @@ export class ChatMessageService {
     sessionId: string,
     visitorId: string,
     content: string,
+    metadata?: Record<string, any>,
   ): Promise<ChatMessageEntity> {
     const message = await this.messageRepository.create({
       sessionId,
@@ -24,6 +25,7 @@ export class ChatMessageService {
       role: ChatRole.USER,
       content,
       status: MessageStatus.COMPLETED,
+      metadata,
     });
 
     this.logger.log(

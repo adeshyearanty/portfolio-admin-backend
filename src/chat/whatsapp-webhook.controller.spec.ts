@@ -107,7 +107,7 @@ describe('WhatsappWebhookController', () => {
       expect(mockChatService.handleUserMessage).not.toHaveBeenCalled();
     });
 
-    it('should process text messages, de-duplicate, call ChatService, and dispatch fetch reply', async () => {
+    it('should process text messages, send typing indicator, de-duplicate, call ChatService, and dispatch fetch reply', async () => {
       const body = {
         object: 'whatsapp_business_account',
         entry: [
@@ -154,12 +154,38 @@ describe('WhatsappWebhookController', () => {
       const result1 = await controller.receiveMessage(body);
       expect(result1).toBe('EVENT_RECEIVED');
 
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      // Call 1: Typing indicator
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'https://graph.facebook.com/v20.0/phone-id-123/messages',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer access-token-123',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            status: 'read',
+            message_id: 'msg-abc-123',
+            typing_indicator: {
+              type: 'text',
+            },
+          }),
+        },
+      );
+
       expect(handleUserMessageMock).toHaveBeenCalledWith(
         'Hello AI',
         '1234567890',
         'whatsapp',
       );
-      expect(mockFetch).toHaveBeenCalledWith(
+
+      // Call 2: Outbound reply message
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
         'https://graph.facebook.com/v20.0/phone-id-123/messages',
         {
           method: 'POST',
@@ -188,6 +214,132 @@ describe('WhatsappWebhookController', () => {
       expect(result2).toBe('EVENT_RECEIVED');
       expect(handleUserMessageMock).not.toHaveBeenCalled();
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should continue message processing if typing indicator API call fails', async () => {
+      const body = {
+        object: 'whatsapp_business_account',
+        entry: [
+          {
+            changes: [
+              {
+                value: {
+                  messages: [
+                    {
+                      id: 'msg-failure-test-456',
+                      from: '1234567890',
+                      type: 'text',
+                      text: {
+                        body: 'Test failure handling',
+                      },
+                    },
+                  ],
+                },
+                field: 'messages',
+              },
+            ],
+          },
+        ],
+      };
+
+      const mockChatResponse = {
+        answer: 'Response after typing failure',
+        sources: [],
+      };
+      const handleUserMessageMock = jest
+        .spyOn(chatService, 'handleUserMessage')
+        .mockResolvedValue(mockChatResponse);
+
+      // 1st call fails (typing indicator), 2nd call succeeds (reply)
+      const mockFetch = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('Meta Graph API Network Error'))
+        .mockResolvedValueOnce({
+          ok: true,
+          text: async () => 'success',
+        });
+      global.fetch = mockFetch;
+
+      const result = await controller.receiveMessage(body);
+      expect(result).toBe('EVENT_RECEIVED');
+
+      expect(handleUserMessageMock).toHaveBeenCalledWith(
+        'Test failure handling',
+        '1234567890',
+        'whatsapp',
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'https://graph.facebook.com/v20.0/phone-id-123/messages',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: '1234567890',
+            type: 'text',
+            text: {
+              preview_url: false,
+              body: 'Response after typing failure',
+            },
+          }),
+        }),
+      );
+    });
+
+    it('should process button selection webhooks correctly', async () => {
+      const body = {
+        object: 'whatsapp_business_account',
+        entry: [
+          {
+            changes: [
+              {
+                value: {
+                  messages: [
+                    {
+                      id: 'msg-button-reply-789',
+                      from: '1234567890',
+                      type: 'interactive',
+                      interactive: {
+                        type: 'button_reply' as const,
+                        button_reply: {
+                          id: 'frontend',
+                          title: 'Frontend',
+                        },
+                      },
+                    },
+                  ],
+                },
+                field: 'messages',
+              },
+            ],
+          },
+        ],
+      };
+
+      const mockChatResponse = {
+        answer: 'Frontend details...',
+        sources: [],
+      };
+      const handleUserMessageMock = jest
+        .spyOn(chatService, 'handleUserMessage')
+        .mockResolvedValue(mockChatResponse);
+
+      const mockFetch = jest.fn().mockResolvedValue({
+        ok: true,
+        text: async () => 'success',
+      });
+      global.fetch = mockFetch;
+
+      const result = await controller.receiveMessage(body);
+      expect(result).toBe('EVENT_RECEIVED');
+
+      expect(handleUserMessageMock).toHaveBeenCalledWith(
+        expect.stringContaining("frontend development experience"),
+        '1234567890',
+        'whatsapp',
+      );
     });
   });
 });

@@ -11,6 +11,9 @@ import { ChatSessionRepository } from './repositories/chat-session.repository';
 import { ChatMessageRepository } from './repositories/chat-message.repository';
 import { WhatsappWebhookController } from './whatsapp-webhook.controller';
 import { WhatsAppMessageFormatter } from './whatsapp-message-formatter.service';
+import { WhatsAppActionCatalog } from './whatsapp-action-catalog.service';
+import { WhatsAppResponseValidator } from './whatsapp-response-validator.service';
+import { WhatsAppResponseBuilder } from './whatsapp-response-builder.service';
 
 @Module({
   imports: [LlmModule, KnowledgeBaseModule],
@@ -24,6 +27,9 @@ import { WhatsAppMessageFormatter } from './whatsapp-message-formatter.service';
     ChatMemoryService,
     ChatGateway,
     WhatsAppMessageFormatter,
+    WhatsAppActionCatalog,
+    WhatsAppResponseValidator,
+    WhatsAppResponseBuilder,
   ],
   exports: [
     ChatService,
@@ -31,6 +37,9 @@ import { WhatsAppMessageFormatter } from './whatsapp-message-formatter.service';
     ChatMessageService,
     ChatMemoryService,
     WhatsAppMessageFormatter,
+    WhatsAppActionCatalog,
+    WhatsAppResponseValidator,
+    WhatsAppResponseBuilder,
   ],
 })
 export class ChatModule {}

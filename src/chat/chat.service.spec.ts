@@ -6,6 +6,9 @@ import { ChatMemoryService } from './chat-memory.service';
 import { ChatMessageService } from './chat-message.service';
 import { ChatSessionService } from './chat-session.service';
 import { WhatsAppMessageFormatter } from './whatsapp-message-formatter.service';
+import { WhatsAppActionCatalog } from './whatsapp-action-catalog.service';
+import { WhatsAppResponseValidator } from './whatsapp-response-validator.service';
+import { WhatsAppResponseBuilder } from './whatsapp-response-builder.service';
 
 describe('ChatService', () => {
   let service: ChatService;
@@ -34,6 +37,28 @@ describe('ChatService', () => {
     updateLastMessageAt: jest.fn(),
   };
 
+  const mockWhatsAppActionCatalog = {
+    resolveUrl: jest.fn(),
+    isAllowedAction: jest.fn(),
+  };
+
+  const mockWhatsAppResponseValidator = {
+    validate: jest.fn((raw: any) => ({
+      text: String(raw),
+      actions: [],
+    })),
+  };
+
+  const mockWhatsAppResponseBuilder = {
+    buildPayload: jest.fn((to: string, res: any) => ({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'text',
+      text: { body: res.text },
+    })),
+  };
+
   let module: TestingModule;
 
   beforeEach(async () => {
@@ -59,6 +84,18 @@ describe('ChatService', () => {
         {
           provide: ChatSessionService,
           useValue: mockChatSessionService,
+        },
+        {
+          provide: WhatsAppActionCatalog,
+          useValue: mockWhatsAppActionCatalog,
+        },
+        {
+          provide: WhatsAppResponseValidator,
+          useValue: mockWhatsAppResponseValidator,
+        },
+        {
+          provide: WhatsAppResponseBuilder,
+          useValue: mockWhatsAppResponseBuilder,
         },
       ],
     }).compile();

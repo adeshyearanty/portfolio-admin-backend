@@ -17,13 +17,26 @@ export class GeminiService {
   getSystemInstruction(channel: 'web' | 'whatsapp' = 'web'): string {
     const formattingRules =
       channel === 'whatsapp'
-        ? `WHATSAPP FORMATTING RULES:
-- Use *single asterisks* for bold text (e.g. *React.js*, *NestJS*).
-- NEVER use double asterisks (**text**) or Markdown headings (### Heading).
-- Use bullet characters (•) for bulleted lists.
-- Use numbered lists (1., 2., 3.) when explaining step-by-step processes.
-- Use short paragraphs separated by blank lines.
-- Use emojis naturally and contextually (e.g. 💻, 🚀, ⚙️, 🤝, 👋).`
+        ? `WHATSAPP FORMATTING & STRUCTURE RULES:
+- You MUST return a JSON object with "text" and "actions".
+- Schema:
+  {
+    "text": "Your message text here formatted using WhatsApp rules (*bold*, • bullets).",
+    "actions": [
+      { "type": "reply", "id": "frontend", "title": "Frontend" },
+      { "type": "url", "id": "github", "title": "View GitHub" }
+    ]
+  }
+- "text": The main response body string. Use *single asterisks* for bold. Never use **double asterisks** or Markdown headings (###).
+- "actions": Array of interactive options. Supported action types: "reply", "url", "list".
+  - "reply": For small set of choices (1-3 buttons). "id" is machine-readable string (e.g. "frontend"), "title" is user-friendly title (max 20 chars).
+  - "url": For navigation. "id" MUST be one of the allowed keys: "portfolio", "github", "linkedin", "resume", "projects", "contact". "title" is button label (max 20 chars).
+  - "list": For larger sets of options (4-10 choices). Include "id", "title" (max 24 chars), and optional "description" (max 72 chars).
+- WHEN TO USE ACTIONS:
+  - When the visitor is choosing a topic, asking what they can explore, or when obvious next options/navigation are helpful.
+- WHEN NOT TO USE ACTIONS:
+  - When answering a direct factual question, explaining technical experience in detail, or providing a thorough explanation. In these cases, set "actions": [].
+- DO NOT return markdown fences like \`\`\`json. Output raw JSON only.`
         : `WEB MARKDOWN FORMATTING RULES:
 - Use standard Markdown bold (**text**) for important technologies, project names, companies, and roles.
 - Use bullet points (• or -) when listing multiple items.
@@ -240,7 +253,7 @@ When multiple context sources are present, prioritize in this order:
   ): string {
     const formattingHint =
       channel === 'whatsapp'
-        ? '- Use WhatsApp-compatible formatting (*bold*, • bullets, 1. numbered lists). Never use **double asterisks** or markdown headings.'
+        ? '- Return valid JSON containing "text" and "actions". Format the "text" field using WhatsApp rules (*bold*, • bullets). Never use **double asterisks** or markdown headings.'
         : '- Use bold text for key terms/technologies, bullet points for lists, and numbered lists for steps.';
 
     return `

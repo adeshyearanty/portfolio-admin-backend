@@ -8,6 +8,9 @@ import { WhatsAppMessageFormatter } from './whatsapp-message-formatter.service';
 import { ChatResponseDto } from './dto/chat-response.dto';
 import { ChatChannel } from './enums/chat.enums';
 
+import { WhatsAppResponseValidator, StructuredWhatsAppResponse } from './whatsapp-response-validator.service';
+import { WhatsAppResponseBuilder } from './whatsapp-response-builder.service';
+
 @Injectable()
 export class ChatService {
   private readonly logger = new Logger(ChatService.name);
@@ -19,6 +22,8 @@ export class ChatService {
     private readonly whatsappFormatter: WhatsAppMessageFormatter,
     private readonly chatMessageService: ChatMessageService,
     private readonly chatSessionService: ChatSessionService,
+    private readonly whatsappValidator: WhatsAppResponseValidator,
+    private readonly whatsappResponseBuilder: WhatsAppResponseBuilder,
   ) {}
 
   /**
@@ -75,11 +80,23 @@ export class ChatService {
       channel,
     );
 
+    let answer = rawAnswer;
+    let structuredResponse: StructuredWhatsAppResponse | undefined = undefined;
+    let whatsappPayload: any = undefined;
+
     // 5. Normalize formatting for target channel
-    const answer =
-      channel === 'whatsapp'
-        ? this.whatsappFormatter.format(rawAnswer)
-        : rawAnswer;
+    if (channel === 'whatsapp') {
+      structuredResponse = this.whatsappValidator.validate(rawAnswer);
+      structuredResponse.text = this.whatsappFormatter.format(structuredResponse.text);
+      answer = structuredResponse.text;
+
+      if (sessionId) {
+        whatsappPayload = this.whatsappResponseBuilder.buildPayload(
+          sessionId,
+          structuredResponse,
+        );
+      }
+    }
 
     // 6. Save message exchange to memory if sessionId is active
     if (sessionId) {
@@ -97,6 +114,8 @@ export class ChatService {
     return {
       answer,
       sources,
+      structuredResponse,
+      whatsappPayload,
     };
   }
 

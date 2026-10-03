@@ -37,6 +37,18 @@ export interface WhatsappWebhookBody {
             body: string;
           };
           type?: string;
+          interactive?: {
+            type?: 'button_reply' | 'list_reply';
+            button_reply?: {
+              id: string;
+              title: string;
+            };
+            list_reply?: {
+              id: string;
+              title: string;
+              description?: string;
+            };
+          };
         }>;
         statuses?: any[];
       };
@@ -108,10 +120,37 @@ export class WhatsappWebhookController {
     const messageId = message.id;
     const sender = message.from; // Sender's phone number
 
-    // Extract message body
-    const messageText = message.text?.body;
+    let messageText: string | undefined = undefined;
+
+    const ACTION_INTENT_MAP: Record<string, string> = {
+      frontend: "Tell me about Adesh's frontend development experience and technical skills.",
+      backend: "Tell me about Adesh's backend development experience, microservices, and technical skills.",
+      aws: "Tell me about Adesh's AWS and cloud infrastructure experience.",
+      projects: "Show me Adesh's key portfolio projects.",
+      experience: "Tell me about Adesh's professional work experience and background.",
+      contact: "How can I contact Adesh or view his contact details?",
+      resume: "How can I view Adesh's resume?",
+    };
+
+    if (message.type === 'text' && message.text?.body) {
+      messageText = message.text.body;
+    } else if (message.type === 'interactive' && message.interactive) {
+      const buttonReply = message.interactive.button_reply;
+      const listReply = message.interactive.list_reply;
+
+      if (buttonReply) {
+        const actionId = buttonReply.id;
+        const title = buttonReply.title;
+        messageText = ACTION_INTENT_MAP[actionId.toLowerCase()] || title || actionId;
+      } else if (listReply) {
+        const actionId = listReply.id;
+        const title = listReply.title;
+        messageText = ACTION_INTENT_MAP[actionId.toLowerCase()] || title || actionId;
+      }
+    }
+
     if (!messageText) {
-      this.logger.log(`Ignoring non-text message type: ${message.type}`);
+      this.logger.log(`Ignoring non-text / unsupported message type: ${message.type}`);
       return 'EVENT_RECEIVED';
     }
 
@@ -124,6 +163,9 @@ export class WhatsappWebhookController {
 
     this.logger.log(`Processing message from ${sender}: "${messageText}"`);
 
+    // Send typing indicator best-effort before starting processing
+    await this.sendWhatsappTypingIndicator(messageId);
+
     // 5. Query ChatService using phone number as the unique sessionId for memory preservation
     try {
       const response = await this.chatService.handleUserMessage(
@@ -132,8 +174,12 @@ export class WhatsappWebhookController {
         'whatsapp',
       );
 
-      // 6. Send reply message using Meta API
-      await this.sendWhatsappReply(sender, response.answer);
+      // 6. Send reply message or interactive payload using Meta API
+      if (response.whatsappPayload) {
+        await this.sendWhatsappPayload(response.whatsappPayload);
+      } else {
+        await this.sendWhatsappReply(sender, response.answer);
+      }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       this.logger.error(
@@ -144,9 +190,8 @@ export class WhatsappWebhookController {
     return 'EVENT_RECEIVED';
   }
 
-  private async sendWhatsappReply(
-    to: string,
-    replyText: string,
+  private async sendWhatsappTypingIndicator(
+    messageId: string,
   ): Promise<void> {
     const phoneNumberId = this.configService.get<string>(
       'app.whatsappPhoneNumberId',
@@ -156,24 +201,67 @@ export class WhatsappWebhookController {
     );
 
     if (!phoneNumberId || !accessToken) {
+      this.logger.warn(
+        'WhatsApp ACCESS_TOKEN or PHONE_NUMBER_ID is not configured. Skipping typing indicator.',
+      );
+      return;
+    }
+
+    try {
+      const url = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
+      const payload = {
+        messaging_product: 'whatsapp',
+        status: 'read',
+        message_id: messageId,
+        typing_indicator: {
+          type: 'text',
+        },
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(
+          `Failed to send WhatsApp typing indicator (status ${response.status}): ${errorText}`,
+        );
+      } else {
+        this.logger.log(
+          `Successfully sent WhatsApp typing indicator for message ID: ${messageId}`,
+        );
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       this.logger.error(
-        'WhatsApp ACCESS_TOKEN or PHONE_NUMBER_ID is not configured. Reply output log: ' +
-        replyText,
+        `Failed to send WhatsApp typing indicator: ${errMsg}`,
+      );
+    }
+  }
+
+  private async sendWhatsappPayload(payload: any): Promise<void> {
+    const phoneNumberId = this.configService.get<string>(
+      'app.whatsappPhoneNumberId',
+    );
+    const accessToken = this.configService.get<string>(
+      'app.whatsappAccessToken',
+    );
+
+    if (!phoneNumberId || !accessToken) {
+      this.logger.error(
+        'WhatsApp ACCESS_TOKEN or PHONE_NUMBER_ID is not configured. Payload body: ' +
+          JSON.stringify(payload),
       );
       return;
     }
 
     const url = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
-    const payload = {
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to,
-      type: 'text',
-      text: {
-        preview_url: false,
-        body: replyText,
-      },
-    };
 
     const response = await fetch(url, {
       method: 'POST',
@@ -191,7 +279,24 @@ export class WhatsappWebhookController {
       );
     }
 
-    this.logger.log(`Successfully dispatched WhatsApp reply message to ${to}`);
+    this.logger.log(`Successfully dispatched WhatsApp message to ${payload.to}`);
+  }
+
+  private async sendWhatsappReply(
+    to: string,
+    replyText: string,
+  ): Promise<void> {
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to,
+      type: 'text',
+      text: {
+        preview_url: false,
+        body: replyText,
+      },
+    };
+    await this.sendWhatsappPayload(payload);
   }
 
   private cleanDeDupCache(): void {

@@ -32,4 +32,16 @@ export class ChatResponseDto {
     description: 'List of sources used to compile the answer',
   })
   sources: SourceDto[];
+
+  @ApiProperty({
+    required: false,
+    description: 'Structured response object for interactive channels',
+  })
+  structuredResponse?: any;
+
+  @ApiProperty({
+    required: false,
+    description: 'Formatted Meta WhatsApp Cloud API payload',
+  })
+  whatsappPayload?: any;
 }

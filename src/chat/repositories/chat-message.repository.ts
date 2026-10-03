@@ -11,6 +11,7 @@ export interface ChatMessageDoc extends Document {
   role: ChatRole;
   content: string;
   status: MessageStatus;
+  metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +23,7 @@ export interface ChatMessageEntity {
   role: ChatRole;
   content: string;
   status: MessageStatus;
+  metadata?: Record<string, any>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,6 +71,7 @@ export class ChatMessageRepository implements OnModuleInit {
       role: doc.role,
       content: doc.content,
       status: doc.status,
+      metadata: doc.metadata,
       createdAt:
         doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt),
       updatedAt:
@@ -82,6 +85,7 @@ export class ChatMessageRepository implements OnModuleInit {
     role: ChatRole;
     content: string;
     status: MessageStatus;
+    metadata?: Record<string, any>;
   }): Promise<ChatMessageEntity> {
     const now = new Date();
     const id = randomUUID();
@@ -92,6 +96,7 @@ export class ChatMessageRepository implements OnModuleInit {
       role: params.role,
       content: params.content,
       status: params.status,
+      ...(params.metadata ? { metadata: params.metadata } : {}),
       createdAt: now,
       updatedAt: now,
     };
