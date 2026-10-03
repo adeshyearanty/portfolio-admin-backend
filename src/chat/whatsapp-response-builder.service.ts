@@ -109,7 +109,10 @@ export class WhatsAppResponseBuilder {
       interactive: {
         type: 'button',
         body: {
-          text: (bodyText || '').substring(0, WhatsAppLimits.MAX_BODY_TEXT_LENGTH),
+          text: (bodyText || '').substring(
+            0,
+            WhatsAppLimits.MAX_INTERACTIVE_BODY_TEXT_LENGTH,
+          ),
         },
         action: {
           buttons,
@@ -147,7 +150,10 @@ export class WhatsAppResponseBuilder {
       interactive: {
         type: 'list',
         body: {
-          text: (bodyText || '').substring(0, WhatsAppLimits.MAX_BODY_TEXT_LENGTH),
+          text: (bodyText || '').substring(
+            0,
+            WhatsAppLimits.MAX_INTERACTIVE_BODY_TEXT_LENGTH,
+          ),
         },
         action: {
           button: 'Explore Options',
@@ -179,7 +185,10 @@ export class WhatsAppResponseBuilder {
       interactive: {
         type: 'cta_url',
         body: {
-          text: (bodyText || '').substring(0, WhatsAppLimits.MAX_BODY_TEXT_LENGTH),
+          text: (bodyText || '').substring(
+            0,
+            WhatsAppLimits.MAX_INTERACTIVE_BODY_TEXT_LENGTH,
+          ),
         },
         action: {
           name: 'cta_url',

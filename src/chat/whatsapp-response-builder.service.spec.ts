@@ -88,4 +88,16 @@ describe('WhatsAppResponseBuilder', () => {
     expect(payload.interactive.type).toBe('cta_url');
     expect(payload.interactive.action.parameters.url).toBe('https://github.com/adeshyearanty');
   });
+
+  it('should truncate interactive message body text to 1024 characters max to comply with Meta API limit', () => {
+    const longText = 'A'.repeat(1500);
+    const response: StructuredWhatsAppResponse = {
+      text: longText,
+      actions: [{ type: 'reply', id: 'frontend', title: 'Frontend' }],
+    };
+
+    const payload = builder.buildPayload('1234567890', response);
+    expect(payload.type).toBe('interactive');
+    expect(payload.interactive.body.text.length).toBe(1024);
+  });
 });
