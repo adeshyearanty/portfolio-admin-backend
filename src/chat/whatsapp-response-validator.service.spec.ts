@@ -103,4 +103,23 @@ describe('WhatsAppResponseValidator', () => {
     expect(result.actions.every((a) => a.type === 'list')).toBe(true);
     expect(result.actions).toHaveLength(4);
   });
+
+  it('should extract JSON block and clean text when output contains conversational text and JSON fences', () => {
+    const rawOutput = `Adesh has a really strong technical foundation across the full stack!
+
+\`\`\`json
+{
+  "text": "Adesh has a really strong technical foundation across the full stack!",
+  "actions": [
+    { "type": "reply", "id": "frontend_skills", "title": "Frontend Skills" },
+    { "type": "reply", "id": "backend_skills", "title": "Backend Skills" }
+  ]
+}
+\`\`\``;
+
+    const result = validator.validate(rawOutput);
+    expect(result.text).toBe("Adesh has a really strong technical foundation across the full stack!");
+    expect(result.actions).toHaveLength(2);
+    expect(result.actions[0].id).toBe('frontend_skills');
+  });
 });

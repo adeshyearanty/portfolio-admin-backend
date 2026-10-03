@@ -31,33 +31,70 @@ export class WhatsAppResponseValidator {
       return { text: '', actions: [] };
     }
 
-    let parsed: any;
-    if (typeof rawOutput === 'string') {
-      try {
-        // Strip markdown code fences if present
-        let cleaned = rawOutput.trim();
-        if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-        }
-        parsed = JSON.parse(cleaned);
-      } catch (err) {
-        this.logger.debug(
-          `Raw output is not JSON, treating as plain text. Error: ${err}`,
-        );
-        return { text: String(rawOutput).trim(), actions: [] };
-      }
-    } else {
+    let parsed: any = null;
+    const rawStr = typeof rawOutput === 'string' ? rawOutput.trim() : '';
+
+    if (typeof rawOutput === 'object' && rawOutput !== null) {
       parsed = rawOutput;
+    } else if (rawStr) {
+      // Step 1: Clean code fences if rawStr starts/ends with ```
+      let cleaned = rawStr;
+      if (cleaned.startsWith('```')) {
+        cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      }
+
+      // Step 2: Try direct JSON.parse
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        // Step 3: Try regex match for ```json { ... } ``` fence embedded inside text
+        const fenceMatch = rawStr.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/i);
+        if (fenceMatch && fenceMatch[1]) {
+          try {
+            parsed = JSON.parse(fenceMatch[1]);
+          } catch {
+            parsed = null;
+          }
+        }
+
+        // Step 4: Try finding JSON object braces `{` to `}`
+        if (!parsed) {
+          const firstBrace = rawStr.indexOf('{');
+          const lastBrace = rawStr.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace > firstBrace) {
+            const potentialJson = rawStr.substring(firstBrace, lastBrace + 1);
+            try {
+              parsed = JSON.parse(potentialJson);
+            } catch {
+              parsed = null;
+            }
+          }
+        }
+      }
     }
 
-    if (typeof parsed !== 'object' || parsed === null) {
-      return { text: String(rawOutput).trim(), actions: [] };
+    // Fallback if no valid JSON object was parsed
+    if (!parsed || typeof parsed !== 'object') {
+      const cleanText = rawStr
+        .replace(/```(?:json)?[\s\S]*?```/gi, '')
+        .replace(/\{[\s\S]*"actions"[\s\S]*\}/gi, '')
+        .trim();
+      return { text: cleanText || rawStr, actions: [] };
     }
 
-    const text =
+    // Extract text from parsed JSON object
+    let text =
       typeof parsed.text === 'string'
         ? parsed.text.trim()
-        : String(parsed.text || rawOutput).trim();
+        : String(parsed.text || '').trim();
+
+    // If parsed.text is empty, check if there was text preceding the JSON block in rawStr
+    if (!text && rawStr) {
+      const firstBrace = rawStr.indexOf('{');
+      if (firstBrace > 0) {
+        text = rawStr.substring(0, firstBrace).trim();
+      }
+    }
 
     if (!Array.isArray(parsed.actions) || parsed.actions.length === 0) {
       return { text, actions: [] };
